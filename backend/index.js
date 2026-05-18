@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { getApartments, createApartment, updateApartmentStatus } = require('./db');
+const { getApartments, createApartment, updateApartment } = require('./db');
 const { scrapeApartment } = require('./scraper');
 
 const app = express();
@@ -22,9 +22,17 @@ app.post('/api/apartments', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'url is required' });
 
   try {
-    const scraped = await scrapeApartment(url);
-    const record = await createApartment(scraped);
+    // Save immediately so the card appears on the board right away
+    const record = await createApartment({ url, scraping: true });
     res.status(201).json(record);
+
+    // Scrape in the background — don't block the response
+    scrapeApartment(url)
+      .then((scraped) => updateApartment(record.id, { ...scraped, scraping: false }))
+      .catch((err) => {
+        console.error('Background scrape failed:', err.message);
+        updateApartment(record.id, { scraping: false }).catch(() => {});
+      });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -38,7 +46,7 @@ app.patch('/api/apartments/:id', async (req, res) => {
     return res.status(400).json({ error: `status must be one of: ${valid.join(', ')}` });
   }
   try {
-    const record = await updateApartmentStatus(id, status);
+    const record = await updateApartment(id, { status });
     res.json(record);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -42,11 +42,11 @@ async function createApartment(fields) {
   return record;
 }
 
-async function updateApartmentStatus(id, status) {
+async function updateApartment(id, fields) {
   if (supabase) {
     const { data, error } = await supabase
       .from('apartments')
-      .update({ status })
+      .update(fields)
       .eq('id', id)
       .select()
       .single();
@@ -55,8 +55,8 @@ async function updateApartmentStatus(id, status) {
   }
   const record = memory.find((a) => a.id === id);
   if (!record) throw new Error('Not found');
-  record.status = status;
+  Object.assign(record, fields);
   return record;
 }
 
-module.exports = { supabase, getApartments, createApartment, updateApartmentStatus };
+module.exports = { supabase, getApartments, createApartment, updateApartment };
