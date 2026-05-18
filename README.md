@@ -30,7 +30,7 @@ CREATE TABLE apartments (
   location    TEXT,
   photos      TEXT[],
   features    JSONB,
-  status      TEXT        DEFAULT 'pending',
+  status      TEXT        DEFAULT 'pending' CHECK (status IN ('pending', 'interested', 'discarded')),
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 ```

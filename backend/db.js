@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { randomUUID } = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 let supabase = null;
@@ -33,7 +34,7 @@ async function createApartment(fields) {
     return data;
   }
   const record = {
-    id: require('crypto').randomUUID(),
+    id: randomUUID(),
     created_at: new Date().toISOString(),
     status: 'pending',
     ...fields,
@@ -59,4 +60,4 @@ async function updateApartment(id, fields) {
   return record;
 }
 
-module.exports = { supabase, getApartments, createApartment, updateApartment };
+module.exports = { getApartments, createApartment, updateApartment };

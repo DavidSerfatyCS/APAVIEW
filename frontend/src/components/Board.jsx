@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
+import { API } from '../lib/config';
 import ApartmentCard from './ApartmentCard';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const parsePrice = (s, fallback) => parseFloat((s || '').replace(/[^\d.]/g, '')) || fallback;
 
 const FILTERS = [
   { value: 'all', label: 'Todos' },
@@ -32,8 +33,9 @@ export default function Board() {
     }
   }, []);
 
-  // Poll every 3s while any card is still scraping (fallback for no Supabase Realtime)
+  // Poll every 3s while any card is still scraping — only when Supabase Realtime is not active
   const schedulePollIfNeeded = useCallback((data) => {
+    if (supabase) return;
     clearTimeout(pollTimer.current);
     if (data.some((a) => a.scraping)) {
       pollTimer.current = setTimeout(async () => {
@@ -64,25 +66,21 @@ export default function Board() {
     setApartments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
   }
 
-  const filtered = apartments.filter(
-    (a) => filterStatus === 'all' || a.status === filterStatus
+  const filtered = useMemo(
+    () => apartments.filter((a) => filterStatus === 'all' || a.status === filterStatus),
+    [apartments, filterStatus]
   );
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'price_asc') {
-      const pa = parseFloat((a.price || '').replace(/[^\d.]/g, '')) || Infinity;
-      const pb = parseFloat((b.price || '').replace(/[^\d.]/g, '')) || Infinity;
-      return pa - pb;
-    }
-    if (sortBy === 'price_desc') {
-      const pa = parseFloat((a.price || '').replace(/[^\d.]/g, '')) || 0;
-      const pb = parseFloat((b.price || '').replace(/[^\d.]/g, '')) || 0;
-      return pb - pa;
-    }
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    if (sortBy === 'price_asc') return parsePrice(a.price, Infinity) - parsePrice(b.price, Infinity);
+    if (sortBy === 'price_desc') return parsePrice(b.price, 0) - parsePrice(a.price, 0);
     return new Date(b.created_at) - new Date(a.created_at);
-  });
+  }), [filtered, sortBy]);
 
-  const scrapingCount = apartments.filter((a) => a.scraping).length;
+  const scrapingCount = useMemo(
+    () => apartments.filter((a) => a.scraping).length,
+    [apartments]
+  );
 
   return (
     <div className="p-4">

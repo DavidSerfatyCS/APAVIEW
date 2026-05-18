@@ -5,7 +5,9 @@ const { getApartments, createApartment, updateApartment } = require('./db');
 const { scrapeApartment } = require('./scraper');
 
 const app = express();
-app.use(cors());
+
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
+app.use(cors(ALLOWED_ORIGIN ? { origin: ALLOWED_ORIGIN } : {}));
 app.use(express.json());
 
 // Track which IDs are currently being scraped — no DB column needed
@@ -26,6 +28,14 @@ app.post('/api/apartments', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'url is required' });
 
+  let parsed;
+  try { parsed = new URL(url); } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return res.status(400).json({ error: 'URL must use http or https' });
+  }
+
   try {
     const record = await createApartment({ url });
     scrapingIds.add(record.id);
@@ -33,7 +43,11 @@ app.post('/api/apartments', async (req, res) => {
 
     // Scrape in the background — don't block the response
     scrapeApartment(url)
-      .then((scraped) => updateApartment(record.id, scraped))
+      .then((scraped) => {
+        // scrapeApartment no longer returns url; but guard anyway
+        const { url: _url, ...scrapedData } = scraped;
+        return updateApartment(record.id, scrapedData);
+      })
       .catch((err) => console.error('Background scrape failed:', err.message))
       .finally(() => scrapingIds.delete(record.id));
   } catch (err) {

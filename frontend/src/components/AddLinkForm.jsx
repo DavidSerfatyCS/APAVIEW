@@ -1,30 +1,36 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API } from '../lib/config';
 
 export default function AddLinkForm() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [flash, setFlash] = useState(null); // { type: 'ok' | 'err', msg }
   const inputRef = useRef(null);
+  const flashTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
+
+  function showFlash(type, msg) {
+    clearTimeout(flashTimer.current);
+    setFlash({ type, msg });
+    flashTimer.current = setTimeout(() => setFlash(null), 4000);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
     setLoading(true);
-    setFlash(null);
     try {
       await axios.post(`${API}/api/apartments`, { url: trimmed });
       setUrl('');
-      setFlash({ type: 'ok', msg: 'Agregado — obteniendo datos en background...' });
+      showFlash('ok', 'Agregado — obteniendo datos en background...');
       inputRef.current?.focus();
     } catch (err) {
-      setFlash({ type: 'err', msg: err.response?.data?.error || 'No se pudo guardar el link' });
+      showFlash('err', err.response?.data?.error || 'No se pudo guardar el link');
     } finally {
       setLoading(false);
-      setTimeout(() => setFlash(null), 4000);
     }
   }
 

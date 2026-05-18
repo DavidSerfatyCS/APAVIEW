@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API } from '../lib/config';
 
 const STATUS_CONFIG = {
   pending:    { label: 'Pendiente',   bg: 'bg-yellow-100', text: 'text-yellow-800', next: 'interested' },
@@ -21,11 +20,23 @@ const FEATURE_ICONS = {
 
 export default function ApartmentCard({ apartment, onStatusChange }) {
   const [photo, setPhoto] = useState(0);
+  const [imgError, setImgError] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // Reset photo index and error state when a different apartment is rendered into this slot
+  useEffect(() => {
+    setPhoto(0);
+    setImgError(false);
+  }, [apartment.id]);
 
   const photos = apartment.photos || [];
   const features = apartment.features || {};
   const cfg = STATUS_CONFIG[apartment.status] || STATUS_CONFIG.pending;
+
+  function goToPhoto(i) {
+    setPhoto(i);
+    setImgError(false);
+  }
 
   async function cycleStatus() {
     if (updating) return;
@@ -69,28 +80,30 @@ export default function ApartmentCard({ apartment, onStatusChange }) {
     );
   }
 
+  const showPlaceholder = photos.length === 0 || imgError;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
       {/* Photo area */}
       <div className="relative bg-gray-100 h-48 overflow-hidden">
-        {photos.length > 0 ? (
+        {!showPlaceholder ? (
           <>
             <img
               src={photos[photo]}
               alt="apartment"
               className="w-full h-full object-cover"
-              onError={(e) => { e.target.style.display = 'none'; }}
+              onError={() => setImgError(true)}
             />
             {photos.length > 1 && (
               <>
                 <button
-                  onClick={() => setPhoto((p) => (p - 1 + photos.length) % photos.length)}
+                  onClick={() => goToPhoto((photo - 1 + photos.length) % photos.length)}
                   className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm"
                 >
                   ‹
                 </button>
                 <button
-                  onClick={() => setPhoto((p) => (p + 1) % photos.length)}
+                  onClick={() => goToPhoto((photo + 1) % photos.length)}
                   className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm"
                 >
                   ›
@@ -99,7 +112,7 @@ export default function ApartmentCard({ apartment, onStatusChange }) {
                   {photos.map((_, i) => (
                     <button
                       key={i}
-                      onClick={() => setPhoto(i)}
+                      onClick={() => goToPhoto(i)}
                       className={`w-1.5 h-1.5 rounded-full transition-colors ${
                         i === photo ? 'bg-white' : 'bg-white/50'
                       }`}
