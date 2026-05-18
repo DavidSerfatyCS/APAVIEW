@@ -8,10 +8,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Track which IDs are currently being scraped — no DB column needed
+const scrapingIds = new Set();
+
 app.get('/api/apartments', async (req, res) => {
   try {
     const data = await getApartments();
-    res.json(data);
+    // Merge scraping state from memory into each record
+    const withScraping = data.map((a) => ({ ...a, scraping: scrapingIds.has(a.id) }));
+    res.json(withScraping);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -22,17 +27,15 @@ app.post('/api/apartments', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'url is required' });
 
   try {
-    // Save immediately so the card appears on the board right away
-    const record = await createApartment({ url, scraping: true });
-    res.status(201).json(record);
+    const record = await createApartment({ url });
+    scrapingIds.add(record.id);
+    res.status(201).json({ ...record, scraping: true });
 
     // Scrape in the background — don't block the response
     scrapeApartment(url)
-      .then((scraped) => updateApartment(record.id, { ...scraped, scraping: false }))
-      .catch((err) => {
-        console.error('Background scrape failed:', err.message);
-        updateApartment(record.id, { scraping: false }).catch(() => {});
-      });
+      .then((scraped) => updateApartment(record.id, scraped))
+      .catch((err) => console.error('Background scrape failed:', err.message))
+      .finally(() => scrapingIds.delete(record.id));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -47,7 +50,7 @@ app.patch('/api/apartments/:id', async (req, res) => {
   }
   try {
     const record = await updateApartment(id, { status });
-    res.json(record);
+    res.json({ ...record, scraping: scrapingIds.has(id) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
