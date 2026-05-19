@@ -89,6 +89,26 @@ async function deleteApartment(id) {
   }
 }
 
+async function findApartmentByUrl(url) {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('apartments')
+      .select('*, votes(user_name, vote)')
+      .eq('url', url)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  }
+  const found = memory.find((a) => a.url === url);
+  if (!found) return null;
+  return {
+    ...found,
+    votes: memoryVotes
+      .filter((v) => v.apartment_id === found.id)
+      .map(({ user_name, vote }) => ({ user_name, vote })),
+  };
+}
+
 async function getApartment(id) {
   if (supabase) {
     const { data, error } = await supabase.from('apartments').select('*').eq('id', id).single();
@@ -198,6 +218,7 @@ async function deleteComment(commentId) {
 module.exports = {
   getApartments,
   getApartment,
+  findApartmentByUrl,
   createApartment,
   updateApartment,
   deleteApartment,

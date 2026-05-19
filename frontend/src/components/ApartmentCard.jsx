@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import {
   X, ChevronLeft, ChevronRight, MapPin, Home, Loader2, AlertTriangle, RotateCw,
@@ -23,19 +23,30 @@ const VOTE_BUTTONS = [
 
 export default function ApartmentCard({
   apartment, onStatusChange, onDelete, onRescrape, onVoteChange,
-  compareMode, selected, onToggleSelect, selectDisabled,
+  compareMode, selected, onToggleSelect, selectDisabled, highlight,
 }) {
   const [photo, setPhoto] = useState(0);
   const [imgError, setImgError] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [pulsing, setPulsing] = useState(false);
+  const rootRef = useRef(null);
+  const pulseTimer = useRef(null);
 
-  // Reset slot-local state when this card is reused for a different apartment
   useEffect(() => {
     setPhoto(0);
     setImgError(false);
   }, [apartment.id]);
+
+  useEffect(() => {
+    if (!highlight) return;
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setPulsing(true);
+    clearTimeout(pulseTimer.current);
+    pulseTimer.current = setTimeout(() => setPulsing(false), 2500);
+    return () => clearTimeout(pulseTimer.current);
+  }, [highlight]);
 
   const photos = apartment.photos || [];
   const features = apartment.features || {};
@@ -142,11 +153,11 @@ export default function ApartmentCard({
 
   const cardBase = `relative bg-white rounded-lg border overflow-hidden flex flex-col transition-all ${
     selected ? 'border-zinc-900 ring-2 ring-zinc-900/10' : 'border-zinc-200 hover:border-zinc-300'
-  }`;
+  } ${pulsing ? 'ring-4 ring-amber-300/70 border-amber-400' : ''}`;
 
   if (apartment.scraping) {
     return (
-      <div className={`${cardBase} animate-pulse`}>
+      <div ref={rootRef} className={`${cardBase} animate-pulse`}>
         {TopActions}
         {CompareCheckbox}
         <div className="bg-zinc-50 h-48 flex flex-col items-center justify-center gap-2 border-b border-dashed border-zinc-200">
@@ -167,7 +178,7 @@ export default function ApartmentCard({
 
   if (failed) {
     return (
-      <div className={`${cardBase} border-amber-300`}>
+      <div ref={rootRef} className={`${cardBase} border-amber-300`}>
         {TopActions}
         {CompareCheckbox}
         <div className="bg-amber-50 h-48 flex flex-col items-center justify-center gap-2 p-4 text-center">
@@ -195,7 +206,7 @@ export default function ApartmentCard({
   const showPlaceholder = photos.length === 0 || imgError;
 
   return (
-    <div className={cardBase}>
+    <div ref={rootRef} className={cardBase}>
       {TopActions}
       {CompareCheckbox}
 

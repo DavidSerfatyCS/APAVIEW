@@ -21,7 +21,7 @@ const SORTS = [
 
 const MAX_COMPARE = 3;
 
-export default function Board({ onCompare }) {
+export default function Board({ onCompare, highlight }) {
   const [apartments, setApartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('date_desc');
@@ -234,6 +234,7 @@ export default function Board({ onCompare }) {
             selected={selectedIds.includes(apt.id)}
             onToggleSelect={() => toggleSelected(apt.id)}
             selectDisabled={!selectedIds.includes(apt.id) && selectedIds.length >= MAX_COMPARE}
+            highlight={highlight?.id === apt.id ? highlight.key : null}
           />
         ))}
       </div>

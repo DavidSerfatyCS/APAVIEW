@@ -4,6 +4,7 @@ const cors = require('cors');
 const {
   getApartments,
   getApartment,
+  findApartmentByUrl,
   createApartment,
   updateApartment,
   deleteApartment,
@@ -45,6 +46,18 @@ function kickOffScrape(id, url) {
     .finally(() => scrapingIds.delete(id));
 }
 
+// Strip query + hash so the same listing pasted with different tracking params
+// is treated as a duplicate. Lowercase host for safety.
+function normalizeUrl(url) {
+  const u = new URL(url);
+  u.search = '';
+  u.hash = '';
+  u.hostname = u.hostname.toLowerCase();
+  let s = u.toString();
+  if (s.endsWith('/')) s = s.slice(0, -1);
+  return s;
+}
+
 app.post('/api/apartments', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'url is required' });
@@ -57,10 +70,19 @@ app.post('/api/apartments', async (req, res) => {
     return res.status(400).json({ error: 'URL must use http or https' });
   }
 
+  const normalized = normalizeUrl(url);
+
   try {
-    const record = await createApartment({ url });
+    const existing = await findApartmentByUrl(normalized);
+    if (existing) {
+      return res.status(409).json({
+        error: 'Este apartamento ya fue publicado',
+        existing: { ...existing, scraping: scrapingIds.has(existing.id) },
+      });
+    }
+    const record = await createApartment({ url: normalized });
     res.status(201).json({ ...record, scraping: true });
-    kickOffScrape(record.id, url);
+    kickOffScrape(record.id, normalized);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

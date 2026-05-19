@@ -6,6 +6,13 @@ import CompareView from './components/CompareView';
 
 export default function App() {
   const [compareApartments, setCompareApartments] = useState(null);
+  const [highlightId, setHighlightId] = useState(null);
+
+  // Stamp each highlight with a fresh object so re-submitting the same id still triggers scroll
+  function triggerHighlight(id) {
+    if (!id) return;
+    setHighlightId({ id, key: Date.now() });
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -18,8 +25,8 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6">
-        <AddLinkForm />
-        <Board onCompare={setCompareApartments} />
+        <AddLinkForm onHighlight={triggerHighlight} />
+        <Board onCompare={setCompareApartments} highlight={highlightId} />
       </main>
 
       {compareApartments && compareApartments.length > 0 && (
