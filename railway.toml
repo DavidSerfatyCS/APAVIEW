@@ -1,4 +1,5 @@
 [build]
+builder = "NIXPACKS"
 buildCommand = "cd backend && npm install && npx playwright install chromium --with-deps"
 
 [deploy]
