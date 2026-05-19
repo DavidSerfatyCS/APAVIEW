@@ -113,62 +113,6 @@ function buildFeatures(data) {
   return features;
 }
 
-const MAX_CONCURRENT = 2;
-let browserPromise = null;
-let activeScrapes = 0;
-const queue = [];
-let idleTimer = null;
-
-const EMPTY_RESULT = () => ({ title: null, price: null, location: null, photos: [], features: {} });
-
-// Close browser after 60s with no active scrapes (saves memory on Railway free tier)
-function resetIdleTimer() {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(async () => {
-    if (activeScrapes === 0 && browserPromise) {
-      const closing = browserPromise;
-      browserPromise = null; // null before await so incoming callers re-launch immediately
-      const b = await closing.catch(() => null);
-      if (b) await b.close().catch(() => {});
-    }
-  }, 60_000);
-}
-
-async function getBrowser() {
-  if (!browserPromise) {
-    // Store the promise, not the resolved value — prevents two concurrent callers from each launching a browser
-    browserPromise = chromium.launch({ headless: true }).catch((err) => {
-      browserPromise = null;
-      throw err;
-    });
-  }
-  resetIdleTimer();
-  return browserPromise;
-}
-
-function withScrapeSlot(fn) {
-  return new Promise((resolve, reject) => {
-    async function tryRun() {
-      if (activeScrapes >= MAX_CONCURRENT) {
-        queue.push(tryRun);
-        return;
-      }
-      activeScrapes++;
-      try {
-        resolve(await fn());
-      } catch (err) {
-        reject(err);
-      } finally {
-        activeScrapes--;
-        const next = queue.shift();
-        if (next) next();
-        if (activeScrapes === 0) resetIdleTimer();
-      }
-    }
-    tryRun();
-  });
-}
-
 async function scrapeYad2(url, page) {
   const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
   const status = resp?.status();
