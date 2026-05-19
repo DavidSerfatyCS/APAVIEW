@@ -1,0 +1,5 @@
+[build]
+buildCommand = "cd backend && npm install && npx playwright install chromium --with-deps"
+
+[deploy]
+startCommand = "cd backend && node index.js"
