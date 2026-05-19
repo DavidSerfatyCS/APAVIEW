@@ -1,71 +1,32 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useMemo } from 'react';
 import { X, MapPin, Check, Minus, ThumbsUp, HelpCircle, ThumbsDown } from 'lucide-react';
+import { FEATURE_META } from '../lib/constants';
+import { parsePrice, summarizeVotes } from '../lib/utils';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-const FEATURE_LABELS = {
-  balcony: 'Balcón',
-  parking: 'Parking',
-  furnished: 'Amueblado',
-  elevator: 'Ascensor',
-  ac: 'A/C',
-  garden: 'Jardín',
-  security: 'Seguridad',
-};
-
-export default function CompareView({ ids, onClose }) {
-  const [apartments, setApartments] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const { data } = await axios.get(`${API}/api/apartments`);
-        if (!cancelled) {
-          // preserve user's selection order
-          const map = new Map(data.map((a) => [a.id, a]));
-          setApartments(ids.map((id) => map.get(id)).filter(Boolean));
-        }
-      } catch (err) {
-        console.error('Error loading apartments for compare', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [ids]);
-
+export default function CompareView({ apartments, onClose }) {
   useEffect(() => {
     const onEsc = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onEsc);
     return () => window.removeEventListener('keydown', onEsc);
   }, [onClose]);
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        <p className="text-zinc-500 text-sm">Cargando…</p>
-      </div>
-    );
-  }
+  const priceNumbers = useMemo(
+    () => apartments.map((a) => parsePrice(a.price, Infinity)),
+    [apartments]
+  );
+  const minPrice = useMemo(() => Math.min(...priceNumbers), [priceNumbers]);
+
+  const allFeatureKeys = useMemo(
+    () => Array.from(new Set(apartments.flatMap((a) => Object.keys(a.features || {})))),
+    [apartments]
+  );
 
   if (apartments.length === 0) return null;
-
-  const priceNumbers = apartments.map((a) => parseFloat((a.price || '').replace(/[^\d.]/g, '')) || Infinity);
-  const minPrice = Math.min(...priceNumbers);
-
-  const allFeatureKeys = Array.from(
-    new Set(apartments.flatMap((a) => Object.keys(a.features || {})))
-  );
 
   return (
     <div className="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-50 overflow-y-auto">
       <div className="min-h-screen px-4 py-8 flex items-start justify-center">
         <div className="bg-white rounded-xl shadow-2xl border border-zinc-200 w-full max-w-6xl overflow-hidden">
-          {/* Header */}
           <div className="px-6 py-4 border-b border-zinc-200 flex items-center justify-between sticky top-0 bg-white z-10">
             <div>
               <h2 className="text-lg font-semibold text-zinc-900">Comparación</h2>
@@ -79,7 +40,6 @@ export default function CompareView({ ids, onClose }) {
             </button>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -142,9 +102,9 @@ export default function CompareView({ ids, onClose }) {
                 </Row>
 
                 {allFeatureKeys
-                  .filter((k) => FEATURE_LABELS[k])
+                  .filter((k) => FEATURE_META[k])
                   .map((key) => (
-                    <Row key={key} label={FEATURE_LABELS[key]}>
+                    <Row key={key} label={FEATURE_META[key].label}>
                       {apartments.map((a) => (
                         <Cell key={a.id}>
                           {a.features?.[key]
@@ -157,21 +117,18 @@ export default function CompareView({ ids, onClose }) {
 
                 <Row label="Votos">
                   {apartments.map((a) => {
-                    const summary = (a.votes || []).reduce(
-                      (acc, v) => { acc[v.vote] = (acc[v.vote] || 0) + 1; return acc; },
-                      {}
-                    );
+                    const s = summarizeVotes(a.votes);
                     return (
                       <Cell key={a.id}>
                         <div className="flex gap-3 text-xs">
                           <span className="inline-flex items-center gap-1 text-emerald-700">
-                            <ThumbsUp size={12} />{summary.yes || 0}
+                            <ThumbsUp size={12} />{s.yes}
                           </span>
                           <span className="inline-flex items-center gap-1 text-zinc-500">
-                            <HelpCircle size={12} />{summary.maybe || 0}
+                            <HelpCircle size={12} />{s.maybe}
                           </span>
                           <span className="inline-flex items-center gap-1 text-red-600">
-                            <ThumbsDown size={12} />{summary.no || 0}
+                            <ThumbsDown size={12} />{s.no}
                           </span>
                         </div>
                       </Cell>

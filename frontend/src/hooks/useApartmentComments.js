@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import { supabase } from '../lib/supabase';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API } from '../lib/config';
 
 export default function useApartmentComments(apartmentId, enabled) {
   const [comments, setComments] = useState([]);
@@ -26,7 +25,6 @@ export default function useApartmentComments(apartmentId, enabled) {
     fetchComments();
   }, [enabled, fetchComments]);
 
-  // Live updates for this apartment's comments only
   useEffect(() => {
     if (!enabled || !supabase || !apartmentId) return;
     const channel = supabase

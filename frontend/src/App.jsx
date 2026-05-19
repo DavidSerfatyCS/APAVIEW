@@ -5,7 +5,7 @@ import Board from './components/Board';
 import CompareView from './components/CompareView';
 
 export default function App() {
-  const [compareIds, setCompareIds] = useState(null);
+  const [compareApartments, setCompareApartments] = useState(null);
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -19,11 +19,11 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto px-6">
         <AddLinkForm />
-        <Board onCompare={setCompareIds} />
+        <Board onCompare={setCompareApartments} />
       </main>
 
-      {compareIds && compareIds.length > 0 && (
-        <CompareView ids={compareIds} onClose={() => setCompareIds(null)} />
+      {compareApartments && compareApartments.length > 0 && (
+        <CompareView apartments={compareApartments} onClose={() => setCompareApartments(null)} />
       )}
     </div>
   );

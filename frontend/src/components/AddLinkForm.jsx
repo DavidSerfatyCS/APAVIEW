@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, Loader2 } from 'lucide-react';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API } from '../lib/config';
 
 export default function AddLinkForm() {
   const [url, setUrl] = useState('');

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(node -c backend/db.js)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
