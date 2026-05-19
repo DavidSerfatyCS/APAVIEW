@@ -6,7 +6,7 @@ Dashboard compartido para buscar apartamentos en grupo. Cualquier miembro pega u
 
 ## Requisitos
 
-- Node.js 18+
+- Node.js 22
 - Una cuenta en [supabase.com](https://supabase.com) (gratis)
 
 ---
