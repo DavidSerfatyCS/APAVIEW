@@ -1,7 +1,6 @@
 require('dotenv').config();
 const { randomUUID } = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
 
 let supabase = null;
 
@@ -46,7 +45,7 @@ async function createApartment(fields) {
     return { ...data, votes: [] };
   }
   const record = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     created_at: new Date().toISOString(),
     status: 'pending',
     ...fields,
@@ -122,7 +121,7 @@ async function upsertVote(apartmentId, userName, vote) {
     return existing;
   }
   const record = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     apartment_id: apartmentId,
     user_name: userName,
     vote,
@@ -176,7 +175,7 @@ async function createComment(apartmentId, userName, text) {
     return data;
   }
   const record = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     apartment_id: apartmentId,
     user_name: userName,
     text,

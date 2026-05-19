@@ -3,9 +3,8 @@ import axios from 'axios';
 import { GitCompare, X, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API } from '../lib/config';
+import { parsePrice } from '../lib/utils';
 import ApartmentCard from './ApartmentCard';
-
-const parsePrice = (s, fallback) => parseFloat((s || '').replace(/[^\d.]/g, '')) || fallback;
 
 const FILTERS = [
   { value: 'all', label: 'Todos' },
@@ -60,13 +59,27 @@ export default function Board({ onCompare }) {
     return () => clearTimeout(pollTimer.current);
   }, [fetchApartments, schedulePollIfNeeded]);
 
-  // Realtime: apartments + votes (comments handled per-card)
+  // Realtime: apartments need full refetch (scraping fields, photos, etc).
+  // Votes are patched into local state to avoid an apartments refetch per vote.
   useEffect(() => {
     if (!supabase) return;
     const channel = supabase
       .channel('apartview-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'apartments' }, () => fetchApartments())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => fetchApartments())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, ({ eventType, new: newRow, old: oldRow }) => {
+        const apartmentId = newRow?.apartment_id ?? oldRow?.apartment_id;
+        if (!apartmentId) return;
+        setApartments((prev) => prev.map((apt) => {
+          if (apt.id !== apartmentId) return apt;
+          const others = (apt.votes || []).filter(
+            (v) => v.user_name !== (newRow?.user_name ?? oldRow?.user_name)
+          );
+          const next = eventType === 'DELETE'
+            ? others
+            : [...others, { user_name: newRow.user_name, vote: newRow.vote }];
+          return { ...apt, votes: next };
+        }));
+      })
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [fetchApartments]);
@@ -107,6 +120,12 @@ export default function Board({ onCompare }) {
     setSelectedIds([]);
   }
 
+  function launchCompare() {
+    const byId = new Map(apartments.map((a) => [a.id, a]));
+    onCompare(selectedIds.map((id) => byId.get(id)).filter(Boolean));
+    exitCompareMode();
+  }
+
   const filtered = useMemo(
     () => apartments.filter((a) => filterStatus === 'all' || a.status === filterStatus),
     [apartments, filterStatus]
@@ -125,7 +144,6 @@ export default function Board({ onCompare }) {
 
   return (
     <div className="pb-32">
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 py-4 border-b border-zinc-200">
         <div className="flex gap-1">
           {FILTERS.map((f) => (
@@ -220,7 +238,6 @@ export default function Board({ onCompare }) {
         ))}
       </div>
 
-      {/* Compare action bar (sticky bottom) */}
       {compareMode && selectedIds.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 shadow-lg">
           <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-4">
@@ -240,10 +257,7 @@ export default function Board({ onCompare }) {
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  onCompare(selectedIds);
-                  exitCompareMode();
-                }}
+                onClick={launchCompare}
                 disabled={selectedIds.length < 2}
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
               >

@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
   X, ChevronLeft, ChevronRight, MapPin, Home, Loader2, AlertTriangle, RotateCw,
   ThumbsUp, ThumbsDown, HelpCircle, MessageSquare, Send, Trash2,
-  Leaf, Car, Sofa, ArrowUpDown, Snowflake, Trees, Shield,
 } from 'lucide-react';
 import useApartmentComments from '../hooks/useApartmentComments';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API } from '../lib/config';
+import { USERS, AVATAR_COLORS, VOTE_ACTIVE_CLASS, FEATURE_META } from '../lib/constants';
+import { summarizeVotes, timeAgo } from '../lib/utils';
 
 const STATUS = {
   pending:    { label: 'Pendiente',  next: 'interested', class: 'bg-zinc-100 text-zinc-700' },
@@ -15,21 +15,10 @@ const STATUS = {
   discarded:  { label: 'Descartado', next: 'pending',    class: 'bg-zinc-200 text-zinc-500 line-through' },
 };
 
-const FEATURE_ICONS = {
-  balcony:   { Icon: Leaf,          label: 'Balcón' },
-  parking:   { Icon: Car,           label: 'Parking' },
-  furnished: { Icon: Sofa,          label: 'Amueblado' },
-  elevator:  { Icon: ArrowUpDown,   label: 'Ascensor' },
-  ac:        { Icon: Snowflake,     label: 'A/C' },
-  garden:    { Icon: Trees,         label: 'Jardín' },
-  security:  { Icon: Shield,        label: 'Seguridad' },
-};
-
-const USERS = ['Adam', 'Abi', 'David'];
-const VOTE_OPTIONS = [
-  { value: 'yes',   Icon: ThumbsUp,    label: 'Sí' },
-  { value: 'maybe', Icon: HelpCircle,  label: 'Quizá' },
-  { value: 'no',    Icon: ThumbsDown,  label: 'No' },
+const VOTE_BUTTONS = [
+  { value: 'yes',   Icon: ThumbsUp },
+  { value: 'maybe', Icon: HelpCircle },
+  { value: 'no',    Icon: ThumbsDown },
 ];
 
 export default function ApartmentCard({
@@ -42,7 +31,7 @@ export default function ApartmentCard({
   const [retrying, setRetrying] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
 
-  // Reset photo index and error state when a different apartment is rendered into this slot
+  // Reset slot-local state when this card is reused for a different apartment
   useEffect(() => {
     setPhoto(0);
     setImgError(false);
@@ -54,15 +43,7 @@ export default function ApartmentCard({
   const cfg = STATUS[apartment.status] || STATUS.pending;
   const failed = !apartment.scraping && !apartment.title && photos.length === 0;
 
-  const voteSummary = votes.reduce(
-    (acc, v) => {
-      if (v.vote === 'yes') acc.yes++;
-      else if (v.vote === 'no') acc.no++;
-      else acc.maybe++;
-      return acc;
-    },
-    { yes: 0, no: 0, maybe: 0 }
-  );
+  const voteSummary = useMemo(() => summarizeVotes(votes), [votes]);
 
   function goToPhoto(i) {
     setPhoto(i);
@@ -163,7 +144,6 @@ export default function ApartmentCard({
     selected ? 'border-zinc-900 ring-2 ring-zinc-900/10' : 'border-zinc-200 hover:border-zinc-300'
   }`;
 
-  // Scraping in progress
   if (apartment.scraping) {
     return (
       <div className={`${cardBase} animate-pulse`}>
@@ -185,7 +165,6 @@ export default function ApartmentCard({
     );
   }
 
-  // Failed
   if (failed) {
     return (
       <div className={`${cardBase} border-amber-300`}>
@@ -220,9 +199,8 @@ export default function ApartmentCard({
       {TopActions}
       {CompareCheckbox}
 
-      {/* Photo */}
       <div className="relative bg-zinc-100 h-52 overflow-hidden">
-        {photos.length > 0 ? (
+        {!showPlaceholder ? (
           <>
             <img
               src={photos[photo]}
@@ -266,7 +244,6 @@ export default function ApartmentCard({
         )}
       </div>
 
-      {/* Content */}
       <div className="p-4 flex flex-col gap-2.5 flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-sm font-semibold text-zinc-900 line-clamp-2 leading-snug flex-1">
@@ -295,17 +272,16 @@ export default function ApartmentCard({
           </p>
         )}
 
-        {/* Features */}
         {Object.keys(features).length > 0 && (
           <div className="flex flex-wrap gap-1 mt-0.5">
             {Object.entries(features).map(([key, val]) => {
               if (!val) return null;
-              const feat = FEATURE_ICONS[key];
-              if (feat) {
+              const meta = FEATURE_META[key];
+              if (meta) {
                 return (
                   <span key={key} className="bg-zinc-100 text-zinc-700 text-[11px] px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                    <feat.Icon size={11} />
-                    {feat.label}
+                    <meta.Icon size={11} />
+                    {meta.label}
                   </span>
                 );
               }
@@ -318,7 +294,6 @@ export default function ApartmentCard({
           </div>
         )}
 
-        {/* Votes */}
         <div className="border-t border-zinc-100 pt-2.5 mt-1">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Votos</span>
@@ -335,19 +310,15 @@ export default function ApartmentCard({
                 <div key={user} className="flex items-center gap-2 text-xs">
                   <span className="text-zinc-600 w-12 shrink-0 font-medium">{user}</span>
                   <div className="flex gap-1 flex-1">
-                    {VOTE_OPTIONS.map(({ value, Icon }) => {
+                    {VOTE_BUTTONS.map(({ value, Icon }) => {
                       const isActive = userVote?.vote === value;
-                      const activeClass =
-                        value === 'yes'   ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                        value === 'no'    ? 'bg-red-100 text-red-700 border-red-300' :
-                                            'bg-zinc-200 text-zinc-700 border-zinc-300';
                       return (
                         <button
                           key={value}
                           onClick={() => castVote(user, value)}
                           title={`${user} vota ${value}`}
                           className={`flex-1 inline-flex items-center justify-center py-1 rounded border transition-all ${
-                            isActive ? activeClass : 'border-transparent text-zinc-300 hover:text-zinc-600 hover:bg-zinc-50'
+                            isActive ? VOTE_ACTIVE_CLASS[value] : 'border-transparent text-zinc-300 hover:text-zinc-600 hover:bg-zinc-50'
                           }`}
                         >
                           <Icon size={13} />
@@ -361,7 +332,6 @@ export default function ApartmentCard({
           </div>
         </div>
 
-        {/* Comments */}
         <CommentsSection
           apartmentId={apartment.id}
           isOpen={commentsOpen}
@@ -386,7 +356,7 @@ export default function ApartmentCard({
 function CommentsSection({ apartmentId, isOpen, onToggle }) {
   const { comments, loading, addComment, removeComment } = useApartmentComments(apartmentId, isOpen);
   const [text, setText] = useState('');
-  const [author, setAuthor] = useState('Adam');
+  const [author, setAuthor] = useState(USERS[0]);
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(e) {
@@ -476,25 +446,9 @@ function CommentsSection({ apartmentId, isOpen, onToggle }) {
 }
 
 function Avatar({ name }) {
-  const colors = {
-    Adam:  'bg-indigo-100 text-indigo-700',
-    Abi:   'bg-pink-100 text-pink-700',
-    David: 'bg-emerald-100 text-emerald-700',
-  };
   return (
-    <div className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-semibold ${colors[name] || 'bg-zinc-100 text-zinc-700'}`}>
+    <div className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-semibold ${AVATAR_COLORS[name] || 'bg-zinc-100 text-zinc-700'}`}>
       {name[0]}
     </div>
   );
-}
-
-function timeAgo(iso) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'ahora';
-  if (m < 60) return `hace ${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `hace ${h}h`;
-  const d = Math.floor(h / 24);
-  return `hace ${d}d`;
 }
