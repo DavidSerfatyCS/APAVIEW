@@ -33,11 +33,31 @@ CREATE TABLE apartments (
   status      TEXT        DEFAULT 'pending',
   created_at  TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE votes (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  apartment_id UUID        NOT NULL REFERENCES apartments(id) ON DELETE CASCADE,
+  user_name    TEXT        NOT NULL CHECK (user_name IN ('Adam', 'Abi', 'David')),
+  vote         TEXT        NOT NULL CHECK (vote IN ('yes', 'no', 'maybe')),
+  created_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (apartment_id, user_name)
+);
+
+CREATE TABLE comments (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  apartment_id UUID        NOT NULL REFERENCES apartments(id) ON DELETE CASCADE,
+  user_name    TEXT        NOT NULL CHECK (user_name IN ('Adam', 'Abi', 'David')),
+  text         TEXT        NOT NULL CHECK (length(trim(text)) > 0),
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_votes_apartment ON votes(apartment_id);
+CREATE INDEX idx_comments_apartment ON comments(apartment_id);
 ```
 
 ### 3. Activar Realtime
 
-En **Table Editor → apartments → Realtime toggle** → activar.
+En **Table Editor → Realtime toggle** → activar para las 3 tablas: **apartments**, **votes** y **comments**.
 
 ### 4. Copiar las credenciales
 

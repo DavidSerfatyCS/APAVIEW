@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { GitCompare, X, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ApartmentCard from './ApartmentCard';
 
@@ -12,11 +13,21 @@ const FILTERS = [
   { value: 'discarded', label: 'Descartado' },
 ];
 
-export default function Board() {
+const SORTS = [
+  { value: 'date_desc', label: 'Reciente' },
+  { value: 'price_asc', label: 'Precio ↑' },
+  { value: 'price_desc', label: 'Precio ↓' },
+];
+
+const MAX_COMPARE = 3;
+
+export default function Board({ onCompare }) {
   const [apartments, setApartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('date_desc');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const pollTimer = useRef(null);
 
   const fetchApartments = useCallback(async () => {
@@ -32,7 +43,6 @@ export default function Board() {
     }
   }, []);
 
-  // Poll every 3s while any card is still scraping (fallback for no Supabase Realtime)
   const schedulePollIfNeeded = useCallback((data) => {
     clearTimeout(pollTimer.current);
     if (data.some((a) => a.scraping)) {
@@ -48,20 +58,51 @@ export default function Board() {
     return () => clearTimeout(pollTimer.current);
   }, [fetchApartments, schedulePollIfNeeded]);
 
-  // Supabase Realtime subscription
+  // Realtime: apartments + votes (comments handled per-card)
   useEffect(() => {
     if (!supabase) return;
     const channel = supabase
-      .channel('apartments-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'apartments' }, () => {
-        fetchApartments();
-      })
+      .channel('apartview-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'apartments' }, () => fetchApartments())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, () => fetchApartments())
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [fetchApartments]);
 
   function handleStatusChange(updated) {
-    setApartments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    setApartments((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+  }
+
+  function handleDelete(id) {
+    setApartments((prev) => prev.filter((a) => a.id !== id));
+    setSelectedIds((prev) => prev.filter((s) => s !== id));
+  }
+
+  function handleRescrape(updated) {
+    setApartments((prev) => {
+      const next = prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a));
+      schedulePollIfNeeded(next);
+      return next;
+    });
+  }
+
+  function handleVoteChange(apartmentId, newVotes) {
+    setApartments((prev) =>
+      prev.map((a) => (a.id === apartmentId ? { ...a, votes: newVotes } : a))
+    );
+  }
+
+  function toggleSelected(id) {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((s) => s !== id);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, id];
+    });
+  }
+
+  function exitCompareMode() {
+    setCompareMode(false);
+    setSelectedIds([]);
   }
 
   const filtered = apartments.filter(
@@ -85,19 +126,18 @@ export default function Board() {
   const scrapingCount = apartments.filter((a) => a.scraping).length;
 
   return (
-    <div className="p-4">
+    <div className="pb-32">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Status filter */}
+      <div className="flex flex-wrap items-center gap-2 py-4 border-b border-zinc-200">
         <div className="flex gap-1">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilterStatus(f.value)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                 filterStatus === f.value
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'border-gray-300 text-gray-600 hover:border-blue-400'
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
               }`}
             >
               {f.label}
@@ -105,70 +145,117 @@ export default function Board() {
           ))}
         </div>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
+        <div className="w-px h-4 bg-zinc-200 mx-1" />
 
-        {/* Sort */}
-        <span className="text-gray-400 text-xs">Ordenar:</span>
-        {[
-          { value: 'date_desc', label: 'Reciente' },
-          { value: 'price_asc', label: 'Precio ↑' },
-          { value: 'price_desc', label: 'Precio ↓' },
-        ].map((opt) => (
+        <span className="text-zinc-400 text-xs">Orden</span>
+        {SORTS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setSortBy(opt.value)}
-            className={`px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
               sortBy === opt.value
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
             }`}
           >
             {opt.label}
           </button>
         ))}
 
-        <div className="ml-auto flex items-center gap-3 text-xs text-gray-400">
+        <div className="ml-auto flex items-center gap-3">
           {scrapingCount > 0 && (
-            <span className="flex items-center gap-1 text-blue-500">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-              Obteniendo datos ({scrapingCount})
+            <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <Loader2 size={12} className="animate-spin" />
+              Obteniendo {scrapingCount}
             </span>
           )}
-          <span>{apartments.length} apartamentos</span>
+          <span className="text-zinc-400 text-xs tabular-nums">{apartments.length}</span>
+          <button
+            onClick={() => (compareMode ? exitCompareMode() : setCompareMode(true))}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+              compareMode
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'border-zinc-200 text-zinc-700 hover:border-zinc-400'
+            }`}
+          >
+            <GitCompare size={13} />
+            {compareMode ? 'Cancelar' : 'Comparar'}
+          </button>
         </div>
       </div>
 
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-100 h-72 animate-pulse" />
+            <div key={i} className="bg-white rounded-lg border border-zinc-200 h-80 animate-pulse" />
           ))}
         </div>
       )}
 
       {!loading && apartments.length === 0 && (
-        <div className="text-center py-20 text-gray-400">
-          <p className="text-4xl mb-3">🏠</p>
-          <p className="font-medium text-gray-500">No hay apartamentos todavía</p>
-          <p className="text-sm mt-1">Pega el primer link arriba y aparecerá aquí al instante.</p>
+        <div className="text-center py-24 text-zinc-400">
+          <p className="font-medium text-zinc-600 text-sm">No hay apartamentos todavía</p>
+          <p className="text-xs mt-1.5">Pega el primer link arriba y aparece al instante.</p>
         </div>
       )}
 
       {!loading && apartments.length > 0 && sorted.length === 0 && (
-        <p className="text-center text-gray-400 py-12 text-sm">
+        <p className="text-center text-zinc-400 py-12 text-sm">
           No hay apartamentos con ese filtro.
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
         {sorted.map((apt) => (
           <ApartmentCard
             key={apt.id}
             apartment={apt}
             onStatusChange={handleStatusChange}
+            onDelete={handleDelete}
+            onRescrape={handleRescrape}
+            onVoteChange={handleVoteChange}
+            compareMode={compareMode}
+            selected={selectedIds.includes(apt.id)}
+            onToggleSelect={() => toggleSelected(apt.id)}
+            selectDisabled={!selectedIds.includes(apt.id) && selectedIds.length >= MAX_COMPARE}
           />
         ))}
       </div>
+
+      {/* Compare action bar (sticky bottom) */}
+      {compareMode && selectedIds.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 shadow-lg">
+          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-4">
+            <span className="text-sm text-zinc-700">
+              <span className="font-semibold text-zinc-900">{selectedIds.length}</span>{' '}
+              seleccionado{selectedIds.length !== 1 && 's'}
+              {selectedIds.length < 2 && (
+                <span className="text-zinc-400"> · selecciona al menos 2</span>
+              )}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={exitCompareMode}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 hover:bg-zinc-100"
+              >
+                <X size={13} />
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  onCompare(selectedIds);
+                  exitCompareMode();
+                }}
+                disabled={selectedIds.length < 2}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <GitCompare size={13} />
+                Comparar →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
