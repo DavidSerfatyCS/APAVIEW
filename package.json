@@ -2,7 +2,7 @@
   "name": "apaview",
   "version": "1.0.0",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node backend/index.js"
