@@ -114,7 +114,7 @@ app.delete('/api/apartments/:id', async (req, res) => {
 app.patch('/api/apartments/:id', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  const valid = ['pending', 'interested', 'discarded'];
+  const valid = ['pending', 'interested', 'contacted', 'discarded'];
   if (!valid.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${valid.join(', ')}` });
   }

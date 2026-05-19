@@ -1,7 +1,43 @@
 const { chromium } = require('playwright-extra');
 const stealth = require('puppeteer-extra-plugin-stealth')();
+const cheerio = require('cheerio');
 
 chromium.use(stealth);
+
+const FACEBOOK_HOSTS = ['facebook.com', 'www.facebook.com', 'm.facebook.com', 'fb.com'];
+
+// Facebook blocks Playwright behind login; the public meta tags are enough for title + cover image.
+// Uses a plain HTTP fetch with a "social card" user-agent so FB serves the OpenGraph version.
+async function scrapeFacebook(url) {
+  const res = await fetch(url, {
+    headers: {
+      'user-agent': 'facebookexternalhit/1.1 (+https://www.facebook.com/externalhit_uatext.php)',
+      'accept': 'text/html,application/xhtml+xml',
+      'accept-language': 'en-US,en;q=0.9',
+    },
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} from Facebook`);
+
+  const $ = cheerio.load(await res.text());
+  const meta = (prop) =>
+    $(`meta[property="${prop}"]`).attr('content') ||
+    $(`meta[name="${prop}"]`).attr('content') ||
+    null;
+
+  const title = meta('og:title');
+  const description = meta('og:description');
+  const image = meta('og:image');
+  const photos = image ? [image] : [];
+
+  return {
+    title: title || null,
+    price: null,
+    location: description || null,
+    photos,
+    features: {},
+  };
+}
 
 const MAX_CONCURRENT = 2;
 let browserPromise = null;
@@ -145,6 +181,17 @@ async function scrapeYad2(url, page) {
 }
 
 async function scrapeApartment(url) {
+  const host = (() => { try { return new URL(url).hostname.toLowerCase(); } catch { return ''; } })();
+
+  if (FACEBOOK_HOSTS.includes(host)) {
+    try {
+      return await scrapeFacebook(url);
+    } catch (err) {
+      console.error(`Facebook scraping failed for ${url}:`, err.message);
+      return EMPTY_RESULT();
+    }
+  }
+
   return withScrapeSlot(async () => {
     const b = await getBrowser();
     const context = await b.newContext({

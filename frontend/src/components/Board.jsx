@@ -10,6 +10,7 @@ const FILTERS = [
   { value: 'all', label: 'Todos' },
   { value: 'pending', label: 'Pendiente' },
   { value: 'interested', label: 'Interesado' },
+  { value: 'contacted', label: 'Contactado' },
   { value: 'discarded', label: 'Descartado' },
 ];
 
