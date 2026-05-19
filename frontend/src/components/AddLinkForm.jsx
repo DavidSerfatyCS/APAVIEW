@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { API } from '../lib/config';
+import { Plus, Loader2 } from 'lucide-react';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function AddLinkForm() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [flash, setFlash] = useState(null); // { type: 'ok' | 'err', msg }
+  const [flash, setFlash] = useState(null);
   const inputRef = useRef(null);
   const flashTimer = useRef(null);
 
@@ -25,7 +27,7 @@ export default function AddLinkForm() {
     try {
       await axios.post(`${API}/api/apartments`, { url: trimmed });
       setUrl('');
-      showFlash('ok', 'Agregado — obteniendo datos en background...');
+      setFlash({ type: 'ok', msg: 'Agregado — obteniendo datos…' });
       inputRef.current?.focus();
     } catch (err) {
       showFlash('err', err.response?.data?.error || 'No se pudo guardar el link');
@@ -35,29 +37,30 @@ export default function AddLinkForm() {
   }
 
   return (
-    <div className="px-4 pt-4 pb-2">
-      <form onSubmit={handleSubmit} className="flex gap-2">
+    <div className="py-6">
+      <form onSubmit={handleSubmit} className="flex items-center gap-3 border-b border-zinc-200 pb-3 focus-within:border-zinc-900 transition-colors">
         <input
           ref={inputRef}
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Pega el link del apartamento (Yad2, Facebook Marketplace...)"
+          placeholder="Pega un link de Yad2…"
           required
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 bg-transparent text-sm placeholder:text-zinc-400 focus:outline-none py-1.5"
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-400 text-white text-xs font-medium px-3.5 py-2 rounded-md transition-colors"
         >
-          {loading ? 'Guardando...' : '+ Agregar'}
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          {loading ? 'Guardando' : 'Agregar'}
         </button>
       </form>
 
       {flash && (
-        <p className={`text-xs mt-2 ${flash.type === 'ok' ? 'text-green-600' : 'text-red-500'}`}>
-          {flash.type === 'ok' ? '✓' : '✗'} {flash.msg}
+        <p className={`text-xs mt-2 ${flash.type === 'ok' ? 'text-zinc-600' : 'text-red-600'}`}>
+          {flash.msg}
         </p>
       )}
     </div>
