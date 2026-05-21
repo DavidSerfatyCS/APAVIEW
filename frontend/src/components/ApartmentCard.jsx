@@ -11,7 +11,8 @@ import { summarizeVotes, timeAgo } from '../lib/utils';
 
 const STATUS = {
   pending:    { label: 'Pendiente',  next: 'interested', class: 'bg-zinc-100 text-zinc-700' },
-  interested: { label: 'Interesado', next: 'discarded',  class: 'bg-zinc-900 text-white' },
+  interested: { label: 'Interesado', next: 'contacted',  class: 'bg-zinc-900 text-white' },
+  contacted:  { label: 'Contactado', next: 'discarded',  class: 'bg-emerald-100 text-emerald-800' },
   discarded:  { label: 'Descartado', next: 'pending',    class: 'bg-zinc-200 text-zinc-500 line-through' },
 };
 
