@@ -14,13 +14,13 @@ const {
   createComment,
   deleteComment,
 } = require('./db');
-const { scrapeApartment } = require('./scraper');
+const { scrapeApartment, parseYad2Item } = require('./scraper');
 
 const app = express();
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 app.use(cors(ALLOWED_ORIGIN ? { origin: ALLOWED_ORIGIN } : {}));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // /ingest sends the raw Yad2 listing object (~20-30KB)
 
 const VALID_USERS = ['Adam', 'Abi', 'David'];
 const VALID_VOTES = ['yes', 'no', 'maybe'];
@@ -83,6 +83,47 @@ app.post('/api/apartments', async (req, res) => {
     const record = await createApartment({ url: normalized });
     res.status(201).json({ ...record, scraping: true });
     kickOffScrape(record.id, normalized);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bookmarklet path: the user's browser already loaded the Yad2 page (passing the
+// anti-bot captcha as a human) and sends us the listing object straight from
+// __NEXT_DATA__. We parse it here with the same logic as the server-side scraper,
+// so no headless browser / datacenter IP is involved.
+app.post('/api/apartments/ingest', async (req, res) => {
+  const { url, item } = req.body;
+  if (!url) return res.status(400).json({ error: 'url is required' });
+  if (!item || typeof item !== 'object') return res.status(400).json({ error: 'item is required' });
+
+  let parsed;
+  try { parsed = new URL(url); } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return res.status(400).json({ error: 'URL must use http or https' });
+  }
+
+  const scraped = parseYad2Item(item);
+  // buildTitle always returns a default ('דירה'), so it can't signal a bad item.
+  // A real listing always has a numeric price; fall back to photos just in case.
+  if (!scraped.price && scraped.photos.length === 0) {
+    return res.status(422).json({ error: 'El anuncio no tiene datos reconocibles' });
+  }
+
+  const normalized = normalizeUrl(url);
+
+  try {
+    const existing = await findApartmentByUrl(normalized);
+    if (existing) {
+      return res.status(409).json({
+        error: 'Este apartamento ya fue publicado',
+        existing: { ...existing, scraping: scrapingIds.has(existing.id) },
+      });
+    }
+    const record = await createApartment({ url: normalized, ...scraped });
+    res.status(201).json({ ...record, scraping: false });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

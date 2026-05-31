@@ -149,6 +149,21 @@ function buildFeatures(data) {
   return features;
 }
 
+// Turn a Yad2 listing item (the object returned by findItemData) into our scraped shape.
+// Shared by the server-side scraper and the client bookmarklet path (/api/apartments/ingest).
+function parseYad2Item(data) {
+  const photos = Array.isArray(data?.metaData?.images) ? data.metaData.images.slice(0, 12) : [];
+  const price = typeof data.price === 'number' ? `${data.price.toLocaleString('he-IL')} ₪` : null;
+
+  return {
+    title: buildTitle(data),
+    price,
+    location: buildLocation(data.address),
+    photos,
+    features: buildFeatures(data),
+  };
+}
+
 async function scrapeYad2(url, page) {
   const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
   const status = resp?.status();
@@ -168,16 +183,7 @@ async function scrapeYad2(url, page) {
   const data = findItemData(nextData);
   if (!data) throw new Error('item data not found in __NEXT_DATA__');
 
-  const photos = Array.isArray(data?.metaData?.images) ? data.metaData.images.slice(0, 12) : [];
-  const price = typeof data.price === 'number' ? `${data.price.toLocaleString('he-IL')} ₪` : null;
-
-  return {
-    title: buildTitle(data),
-    price,
-    location: buildLocation(data.address),
-    photos,
-    features: buildFeatures(data),
-  };
+  return parseYad2Item(data);
 }
 
 async function scrapeApartment(url) {
@@ -217,4 +223,4 @@ async function scrapeApartment(url) {
   });
 }
 
-module.exports = { scrapeApartment };
+module.exports = { scrapeApartment, parseYad2Item };
