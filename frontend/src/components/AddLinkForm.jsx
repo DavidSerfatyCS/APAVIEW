@@ -103,7 +103,7 @@ export default function AddLinkForm({ onHighlight }) {
     // Yad2 blocks our server from its pages (anti-bot). Pasting a yad2 link here
     // would silently produce a blank card — redirect the user to the bookmarklet.
     let host = '';
-    try { host = new URL(trimmed).hostname.toLowerCase(); } catch {}
+    try { host = new URL(trimmed).hostname.toLowerCase(); } catch { }
     if (host.endsWith('yad2.co.il')) {
       clearTimers();
       setBanner({ type: 'yad2' });
@@ -153,6 +153,18 @@ export default function AddLinkForm({ onHighlight }) {
           {loading ? 'Guardando' : 'Agregar'}
         </button>
       </form>
+
+      <p className="mt-2 text-xs text-zinc-400">
+        Para agregar desde Yad2 por primera vez:{' '}
+        <a
+          href="/bookmarklet.html"
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-zinc-600 transition-colors"
+        >
+          instala el botón (si no lo tienes) 🏠
+        </a>
+      </p>
 
       {banner?.type === 'progress' && (
         <div className="mt-3 flex items-center gap-2.5 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">

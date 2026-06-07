@@ -1,55 +1,162 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ApaView · Instalar el botón de Yad2</title>
   <style>
-    :root { color-scheme: light; }
+    :root {
+      color-scheme: light;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #fafafa; color: #27272a; margin: 0; padding: 40px 20px; line-height: 1.6;
+      background: #fafafa;
+      color: #27272a;
+      margin: 0;
+      padding: 48px 20px 64px;
+      line-height: 1.6;
     }
-    .wrap { max-width: 560px; margin: 0 auto; }
-    h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
-    .sub { color: #71717a; font-size: 14px; margin: 0 0 28px; }
+
+    .wrap {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .titulo {
+      width: 100%;
+      display: block;
+      margin-bottom: 40px;
+    }
+
+    .step {
+      margin-bottom: 40px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #e4e4e7;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+    }
+
+    .step img {
+      width: 100%;
+      display: block;
+    }
+
+    /* Panel that sits below the step-1 image */
+    .step-action {
+      padding: 20px 24px 24px;
+      border-top: 1px solid #e4e4e7;
+    }
+
+    .step-action p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #27272a;
+    }
+
     .bm {
-      display: inline-block; background: #18181b; color: #fff; text-decoration: none;
-      font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 8px;
-      cursor: grab; user-select: none;
+      display: inline-block;
+      background: #18181b;
+      color: #fff;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 22px;
+      border-radius: 10px;
+      cursor: grab;
+      user-select: none;
     }
-    .bm:active { cursor: grabbing; }
-    ol { padding-left: 20px; font-size: 14px; }
-    ol li { margin-bottom: 8px; }
-    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; padding: 22px 24px; margin-bottom: 20px; }
-    .hint { font-size: 13px; color: #71717a; background: #f4f4f5; border-radius: 8px; padding: 10px 12px; }
-    code { background: #f4f4f5; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+
+    .bm:active {
+      cursor: grabbing;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #71717a;
+      background: #f4f4f5;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    code {
+      background: #e4e4e7;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    details {
+      margin-top: 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: #a1a1aa;
+    }
+
+    summary:hover {
+      color: #71717a;
+    }
+
+    textarea {
+      width: 100%;
+      height: 110px;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 10px;
+      border: 1px solid #e4e4e7;
+      border-radius: 8px;
+      box-sizing: border-box;
+      background: #f4f4f5;
+      color: #52525b;
+      resize: vertical;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
-    <h1>Botón "Agregar a ApaView"</h1>
-    <p class="sub">Para guardar anuncios de Yad2 sin que el servidor sea bloqueado. Se instala una vez por navegador (computadora).</p>
 
-    <div class="card">
-      <p style="margin-top:0"><strong>1.</strong> Arrastra este botón a tu barra de favoritos (queda con el nombre <strong>APAVIEW</strong>):</p>
-      <p><a class="bm" id="bm" href="#" onclick="return false;">🏠 APAVIEW</a></p>
-      <p class="hint">¿No ves la barra de favoritos? Actívala con <code>Ctrl/Cmd + Shift + B</code>. Si no puedes arrastrar, crea un favorito nuevo y pega en el campo "URL" el contenido que aparece abajo.</p>
+    <img class="titulo" src="./Image_tutorial_bookmark_firstTime_titulo.png"
+      alt="Cómo instalar ApaView — Guarda el botón en tu barra de favoritos para usarlo en anuncios de Yad2" />
+
+
+    <div class="step-action">
+      <p>Arrastra este botón a tu barra de favoritos:</p>
+      <a class="bm" id="bm" href="#" onclick="return false;">🏠 APAVIEW</a>
     </div>
 
-    <div class="card">
-      <p style="margin-top:0"><strong>2.</strong> Para usarlo:</p>
-      <ol>
-        <li>Abre la página de un anuncio en <strong>Yad2</strong>.</li>
-        <li>Haz clic en <strong>🏠 APAVIEW</strong> en tu barra de favoritos.</li>
-        <li>Se abre ApaView con el apartamento ya agregado y resaltado.</li>
-      </ol>
+
+    <!-- Paso 1 -->
+    <div class="step">
+      <img src="./Image_tutorial_bookmark_firstTime_step1.png"
+        alt="Paso 1: Arrastra el botón APAVIEW a tu barra de favoritos" />
+
+    </div>
+
+    <!-- Paso 2 -->
+    <div class="step">
+      <img src="./Image_tutorial_bookmark_firstTime_step2.png" alt="Paso 2: Abre un anuncio en Yad2" />
+    </div>
+
+    <!-- Paso 3 -->
+    <div class="step">
+      <img src="./Image_tutorial_bookmark_firstTime_step3.png"
+        alt="Paso 3: Haz clic en APAVIEW para abrir el anuncio en ApaView" />
     </div>
 
     <details>
-      <summary style="cursor:pointer; font-size:13px; color:#71717a;">Ver el código del favorito (para pegarlo manualmente)</summary>
-      <textarea id="src" readonly style="width:100%; height:120px; margin-top:10px; font-family:monospace; font-size:11px; padding:10px; border:1px solid #e4e4e7; border-radius:8px;"></textarea>
+      <summary>Ver el código del favorito (instalación manual)</summary>
+      <textarea id="src" readonly></textarea>
     </details>
+
   </div>
 
   <script>
@@ -60,21 +167,22 @@
     var APP_ORIGIN = JSON.stringify(location.origin);
     var code =
       "javascript:(function(){try{" +
-        "var el=document.getElementById('__NEXT_DATA__');" +
-        "if(!el){alert('ApaView: abre primero la pagina de un anuncio de Yad2.');return;}" +
-        "var nd=JSON.parse(el.textContent);" +
-        "var ds=nd&&nd.props&&nd.props.pageProps&&nd.props.pageProps.dehydratedState;" +
-        "var qs=(ds&&ds.queries)||[];" +
-        "var item=null;" +
-        "for(var i=0;i<qs.length;i++){var d=qs[i]&&qs[i].state&&qs[i].state.data;" +
-          "if(d&&typeof d==='object'&&('adNumber' in d||'token' in d)&&'price' in d){item=d;break;}}" +
-        "if(!item){alert('ApaView: no encontre los datos del anuncio en esta pagina.');return;}" +
-        "var b64=btoa(unescape(encodeURIComponent(JSON.stringify({url:location.href,item:item}))));" +
-        "window.open(" + APP_ORIGIN + "+'/#add='+encodeURIComponent(b64),'_blank');" +
+      "var el=document.getElementById('__NEXT_DATA__');" +
+      "if(!el){alert('ApaView: abre primero la pagina de un anuncio de Yad2.');return;}" +
+      "var nd=JSON.parse(el.textContent);" +
+      "var ds=nd&&nd.props&&nd.props.pageProps&&nd.props.pageProps.dehydratedState;" +
+      "var qs=(ds&&ds.queries)||[];" +
+      "var item=null;" +
+      "for(var i=0;i<qs.length;i++){var d=qs[i]&&qs[i].state&&qs[i].state.data;" +
+      "if(d&&typeof d==='object'&&('adNumber' in d||'token' in d)&&'price' in d){item=d;break;}}" +
+      "if(!item){alert('ApaView: no encontre los datos del anuncio en esta pagina.');return;}" +
+      "var b64=btoa(unescape(encodeURIComponent(JSON.stringify({url:location.href,item:item}))));" +
+      "window.open(" + APP_ORIGIN + "+'/#add='+encodeURIComponent(b64),'_blank');" +
       "}catch(e){alert('ApaView: error leyendo el anuncio ('+e.message+')');}})();";
 
     document.getElementById('bm').setAttribute('href', code);
     document.getElementById('src').value = code;
   </script>
 </body>
+
 </html>
